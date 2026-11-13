@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import (Flask, render_template, request, redirect, url_for,
@@ -23,6 +23,17 @@ def conectar():
 
 def ahora():
     return datetime.now().strftime("%Y-%m-%d %H:%M")
+SLA_HORAS = {"Alta": 8, "Media": 24, "Baja": 72}
+
+def limite_sla(ticket):
+    creado = datetime.strptime(ticket["creado"], "%Y-%m-%d %H:%M")
+    return creado + timedelta(hours=SLA_HORAS[ticket["prioridad"]])
+
+def esta_vencido(ticket):
+    if ticket["estado"] in ("Resuelto", "Cerrado"):
+        return False
+    return datetime.now() > limite_sla(ticket)
+
 
 
 def crear_tabla():
@@ -135,6 +146,11 @@ def inicio():
     sql += " ORDER BY id DESC"
     with conectar() as con:
      tickets = con.execute(sql, parametros).fetchall()
+     tickets = [dict(fila) for fila in tickets]
+     for t in tickets:
+         t["limite"] = limite_sla(t).strftime("%Y-%m-%d %H:%M")
+         t["vencido"] = esta_vencido(t)
+
      filas_estado = con.execute("SELECT estado, COUNT(*) AS n FROM tickets GROUP BY estado").fetchall()
      filas_prioridad = con.execute("SELECT prioridad, COUNT(*) AS n FROM tickets GROUP BY prioridad").fetchall()
      totales_estado = {e: 0 for e in ESTADOS}

@@ -94,6 +94,9 @@
         <tr>
           <th>ID</th><th>Título</th><th>Usuario</th><th>Categoría</th>
           <th>Prioridad</th><th>Estado</th><th>Asignado</th><th>Creado</th>
+          <th>Límite</th>
+<th>SLA</th>
+
         </tr>
       </thead>
       <tbody>
@@ -111,6 +114,13 @@
           <td>{{ t['estado'] }}</td>
           <td>{{ t['asignado'] }}</td>
           <td>{{ t['creado'] }}</td>
+          <td>{{ t['limite'] }}</td>
+<td>
+  {% if t['estado'] in ['Resuelto', 'Cerrado'] %}—
+  {% elif t['vencido'] %}<span class="badge bg-danger">Vencido</span>
+  {% else %}<span class="badge bg-success">En tiempo</span>{% endif %}
+</td>
+
         </tr>
         {% endfor %}
       </tbody>
