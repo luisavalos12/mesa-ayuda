@@ -150,6 +150,7 @@ def inicio():
      for t in tickets:
          t["limite"] = limite_sla(t).strftime("%Y-%m-%d %H:%M")
          t["vencido"] = esta_vencido(t)
+     total_vencidos = sum(1 for t in tickets if t["vencido"])
 
      filas_estado = con.execute("SELECT estado, COUNT(*) AS n FROM tickets GROUP BY estado").fetchall()
      filas_prioridad = con.execute("SELECT prioridad, COUNT(*) AS n FROM tickets GROUP BY prioridad").fetchall()
@@ -173,6 +174,7 @@ def inicio():
         totales_estado=totales_estado,
         totales_prioridad=totales_prioridad,
         total=sum(totales_estado.values()),
+        total_vencidos=total_vencidos,
 
     )
 
