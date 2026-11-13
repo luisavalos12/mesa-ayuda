@@ -111,9 +111,42 @@ def logout():
 @app.route("/")
 @login_requerido
 def inicio():
+    estado = request.args.get("estado", "")
+    prioridad = request.args.get("prioridad", "")
+    categoria = request.args.get("categoria", "")
+    q = request.args.get("q", "").strip()
+    condiciones = []
+    parametros = []
+    if estado in ESTADOS:
+        condiciones.append("estado = ?")
+        parametros.append(estado)
+    if prioridad in PRIORIDADES:
+        condiciones.append("prioridad = ?")
+        parametros.append(prioridad)
+    if categoria in CATEGORIAS:
+        condiciones.append("categoria = ?")
+        parametros.append(categoria)
+    if q:
+        condiciones.append("(titulo LIKE ? OR descripcion LIKE ? OR usuario LIKE ?)")
+        parametros.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+    sql = "SELECT * FROM tickets"
+    if condiciones:
+        sql += " WHERE " + " AND ".join(condiciones)
+    sql += " ORDER BY id DESC"
     with conectar() as con:
-        tickets = con.execute("SELECT * FROM tickets ORDER BY id DESC").fetchall()
-    return render_template("index.html", tickets=tickets)
+        tickets = con.execute(sql, parametros).fetchall()
+    return render_template(
+        "index.html",
+        tickets=tickets,
+        estados=ESTADOS,
+        prioridades=PRIORIDADES,
+        categorias=CATEGORIAS,
+        estado=estado,
+        prioridad=prioridad,
+        categoria=categoria,
+        q=q,
+    )
+
 
 
 @app.route("/nuevo", methods=["GET", "POST"])
