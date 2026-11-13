@@ -18,6 +18,38 @@
 {% with mensajes = get_flashed_messages() %}
   {% for m in mensajes %}<div class="alert alert-warning">{{ m }}</div>{% endfor %}
 {% endwith %}
+<div class="row g-3 mb-4">
+  <div class="col">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">{{ total }}</h5>
+        <p class="card-text text-muted mb-0">Tickets totales</p>
+      </div>
+    </div>
+  </div>
+  {% for e in estados %}
+  <div class="col">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">{{ totales_estado[e] }}</h5>
+        <p class="card-text text-muted mb-0">{{ e }}</p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="row g-3 mb-4">
+  {% for p in prioridades %}
+  <div class="col-md-4">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">{{ totales_prioridad[p] }}</h5>
+        <p class="card-text text-muted mb-0">Prioridad {{ p }}</p>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
 <form method="get" action="{{ url_for('inicio') }}" class="card p-3 mb-4">
   <div class="row g-2">
     <div class="col-md-3">

@@ -134,8 +134,17 @@ def inicio():
         sql += " WHERE " + " AND ".join(condiciones)
     sql += " ORDER BY id DESC"
     with conectar() as con:
-        tickets = con.execute(sql, parametros).fetchall()
+     tickets = con.execute(sql, parametros).fetchall()
+     filas_estado = con.execute("SELECT estado, COUNT(*) AS n FROM tickets GROUP BY estado").fetchall()
+     filas_prioridad = con.execute("SELECT prioridad, COUNT(*) AS n FROM tickets GROUP BY prioridad").fetchall()
+     totales_estado = {e: 0 for e in ESTADOS}
+    for f in filas_estado:
+     totales_estado[f["estado"]] = f["n"]
+     totales_prioridad = {p: 0 for p in PRIORIDADES}
+    for f in filas_prioridad:
+        totales_prioridad[f["prioridad"]] = f["n"]
     return render_template(
+
         "index.html",
         tickets=tickets,
         estados=ESTADOS,
@@ -145,6 +154,10 @@ def inicio():
         prioridad=prioridad,
         categoria=categoria,
         q=q,
+        totales_estado=totales_estado,
+        totales_prioridad=totales_prioridad,
+        total=sum(totales_estado.values()),
+
     )
 
 
