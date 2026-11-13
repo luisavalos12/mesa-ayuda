@@ -45,7 +45,12 @@
         </div>
       </div>
       <button class="btn btn-primary">Crear ticket</button>
-      <a href="{{ url_for('inicio') }}" class="btn btn-link">Cancelar</a>
+      {% if session.get('usuario_id') %}
+<a href="{{ url_for('inicio') }}" class="btn btn-link">Cancelar</a>
+{% else %}
+<a href="{{ url_for('login') }}" class="btn btn-link">Cancelar</a>
+{% endif %}
+
     </form>
   </div>
 </body>

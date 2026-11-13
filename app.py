@@ -11,6 +11,8 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "solo-para-desarrollo")
 DB = "tickets.db"
 ESTADOS = ["Abierto", "En proceso", "Resuelto", "Cerrado"]
+CATEGORIAS = ["Hardware", "Software", "Red", "Cuentas y accesos", "Otro"]
+PRIORIDADES = ["Baja", "Media", "Alta"]
 
 
 def conectar():
@@ -76,6 +78,9 @@ def lista_tecnicos():
         filas = con.execute("SELECT nombre FROM usuarios ORDER BY nombre").fetchall()
     return ["Sin asignar"] + [f["nombre"] for f in filas]
 
+crear_tabla()
+
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -115,25 +120,31 @@ def inicio():
 def nuevo():
     # Público: cualquier usuario puede reportar un problema
     if request.method == "POST":
-        with conectar() as con:
+     titulo = request.form.get("titulo", "").strip()
+     descripcion = request.form.get("descripcion", "").strip()
+     usuario = request.form.get("usuario", "").strip()
+     categoria = request.form.get("categoria", "")
+     prioridad = request.form.get("prioridad", "")
+     if not titulo or not descripcion or not usuario:
+        flash("Faltan datos: título, descripción y usuario son obligatorios.")
+        return redirect(url_for("nuevo"))
+     if categoria not in CATEGORIAS or prioridad not in PRIORIDADES:
+        flash("Categoría o prioridad no válida.")
+        return redirect(url_for("nuevo"))
+     with conectar() as con:
             cur = con.execute(
                 "INSERT INTO tickets (titulo, descripcion, usuario, categoria, prioridad, creado) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    request.form["titulo"],
-                    request.form["descripcion"],
-                    request.form["usuario"],
-                    request.form["categoria"],
-                    request.form["prioridad"],
-                    ahora(),
-                ),
+                (titulo, descripcion, usuario, categoria, prioridad, ahora()),
+
             )
             nuevo_id = cur.lastrowid
-        if "usuario_id" in session:
-            return redirect(url_for("inicio"))
-        flash(f"Tu ticket MAT-{nuevo_id:03d} fue registrado. Un técnico lo revisará pronto.")
-        return redirect(url_for("nuevo"))
+     if "usuario_id" in session:
+        return redirect(url_for("inicio"))
+     flash(f"Tu ticket MAT-{nuevo_id:03d} fue registrado. Un técnico lo revisará pronto.")
+     return redirect(url_for("nuevo"))
     return render_template("nuevo.html")
+
 
 
 @app.route("/ticket/<int:ticket_id>")
@@ -158,14 +169,17 @@ def detalle(ticket_id):
 @app.route("/ticket/<int:ticket_id>/actualizar", methods=["POST"])
 @login_requerido
 def actualizar(ticket_id):
-    estado = request.form["estado"]
-    asignado = request.form["asignado"]
+    estado = request.form.get("estado", "")
+    asignado = request.form.get("asignado", "")
     with conectar() as con:
         anterior = con.execute(
             "SELECT estado, asignado FROM tickets WHERE id = ?", (ticket_id,)
         ).fetchone()
         if anterior is None:
             abort(404)
+        if estado not in ESTADOS or asignado not in lista_tecnicos():
+            flash("Estado o técnico no válido.")
+            return redirect(url_for("detalle", ticket_id=ticket_id))                     
         con.execute(
             "UPDATE tickets SET estado = ?, asignado = ? WHERE id = ?",
             (estado, asignado, ticket_id),
@@ -186,14 +200,23 @@ def actualizar(ticket_id):
 @app.route("/ticket/<int:ticket_id>/comentar", methods=["POST"])
 @login_requerido
 def comentar(ticket_id):
+    texto = request.form.get("texto", "").strip()
+    if not texto:
+        flash("El comentario no puede estar vacío.")
+        return redirect(url_for("detalle", ticket_id=ticket_id))
     with conectar() as con:
+        existe = con.execute(
+            "SELECT id FROM tickets WHERE id = ?", (ticket_id,)
+        ).fetchone()
+        if existe is None:
+            abort(404)
         con.execute(
             "INSERT INTO comentarios (ticket_id, autor, texto, creado) VALUES (?, ?, ?, ?)",
-            (ticket_id, session["nombre"], request.form["texto"], ahora()),
+            (ticket_id, session["nombre"], texto, ahora()),
         )
     return redirect(url_for("detalle", ticket_id=ticket_id))
 
 
+
 if __name__ == "__main__":
-    crear_tabla()
     app.run(debug=True)

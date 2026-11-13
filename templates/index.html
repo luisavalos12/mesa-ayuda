@@ -15,13 +15,16 @@
   <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">Salir</a>
 </div>
     </div>
+{% with mensajes = get_flashed_messages() %}
+  {% for m in mensajes %}<div class="alert alert-warning">{{ m }}</div>{% endfor %}
+{% endwith %}
 
     {% if tickets %}
     <table class="table table-hover bg-white shadow-sm">
       <thead class="table-dark">
         <tr>
           <th>ID</th><th>Título</th><th>Usuario</th><th>Categoría</th>
-          <th>Prioridad</th><th>Estado</th><th>Creado</th>
+          <th>Prioridad</th><th>Estado</th><th>Asignado</th><th>Creado</th>
         </tr>
       </thead>
       <tbody>
@@ -37,6 +40,7 @@
             {% else %}<span class="badge bg-success">Baja</span>{% endif %}
           </td>
           <td>{{ t['estado'] }}</td>
+          <td>{{ t['asignado'] }}</td>
           <td>{{ t['creado'] }}</td>
         </tr>
         {% endfor %}
