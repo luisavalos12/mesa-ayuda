@@ -9,7 +9,11 @@
   <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1 class="h3">Mesa de Ayuda TI</h1>
-      <a href="{{ url_for('nuevo') }}" class="btn btn-primary">+ Nuevo ticket</a>
+      <div>
+  <span class="me-3 text-muted">Hola, {{ session['nombre'] }}</span>
+  <a href="{{ url_for('nuevo') }}" class="btn btn-primary">+ Nuevo ticket</a>
+  <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">Salir</a>
+</div>
     </div>
 
     {% if tickets %}

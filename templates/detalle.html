@@ -53,7 +53,7 @@
       {% endfor %}
 
       <form method="post" action="{{ url_for('comentar', ticket_id=ticket['id']) }}" class="mt-3">
-        <input name="autor" class="form-control mb-2" placeholder="Tu nombre" required>
+        
         <textarea name="texto" class="form-control mb-2" rows="3" placeholder="Escribe un comentario o lo que hiciste" required></textarea>
         <button class="btn btn-outline-primary">Agregar comentario</button>
       </form>

@@ -1,11 +1,16 @@
+import os
 import sqlite3
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, abort
+from functools import wraps
+
+from flask import (Flask, render_template, request, redirect, url_for,
+                   abort, session, flash)
+from werkzeug.security import check_password_hash
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "solo-para-desarrollo")
 DB = "tickets.db"
 ESTADOS = ["Abierto", "En proceso", "Resuelto", "Cerrado"]
-TECNICOS = ["Sin asignar", "Luis", "Técnico 2"]
 
 
 def conectar():
@@ -43,13 +48,63 @@ def crear_tabla():
                 FOREIGN KEY (ticket_id) REFERENCES tickets(id)
             )
         """)
-        # Si la tabla ya existía (Paso 2), le agregamos la columna nueva
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                usuario TEXT NOT NULL UNIQUE,
+                nombre TEXT NOT NULL,
+                password_hash TEXT NOT NULL
+            )
+        """)
         columnas = [c["name"] for c in con.execute("PRAGMA table_info(tickets)")]
         if "asignado" not in columnas:
             con.execute("ALTER TABLE tickets ADD COLUMN asignado TEXT NOT NULL DEFAULT 'Sin asignar'")
 
 
+def login_requerido(vista):
+    """Si no hay sesión iniciada, manda al login."""
+    @wraps(vista)
+    def envoltura(*args, **kwargs):
+        if "usuario_id" not in session:
+            return redirect(url_for("login", siguiente=request.path))
+        return vista(*args, **kwargs)
+    return envoltura
+
+
+def lista_tecnicos():
+    with conectar() as con:
+        filas = con.execute("SELECT nombre FROM usuarios ORDER BY nombre").fetchall()
+    return ["Sin asignar"] + [f["nombre"] for f in filas]
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        with conectar() as con:
+            u = con.execute(
+                "SELECT * FROM usuarios WHERE usuario = ?", (request.form["usuario"],)
+            ).fetchone()
+        if u and check_password_hash(u["password_hash"], request.form["password"]):
+            session.clear()
+            session["usuario_id"] = u["id"]
+            session["nombre"] = u["nombre"]
+            siguiente = request.args.get("siguiente", "")
+            # Solo redirige a rutas internas de la app
+            if not siguiente.startswith("/") or siguiente.startswith("//"):
+                siguiente = url_for("inicio")
+            return redirect(siguiente)
+        flash("Usuario o contraseña incorrectos.")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
 @app.route("/")
+@login_requerido
 def inicio():
     with conectar() as con:
         tickets = con.execute("SELECT * FROM tickets ORDER BY id DESC").fetchall()
@@ -58,9 +113,10 @@ def inicio():
 
 @app.route("/nuevo", methods=["GET", "POST"])
 def nuevo():
+    # Público: cualquier usuario puede reportar un problema
     if request.method == "POST":
         with conectar() as con:
-            con.execute(
+            cur = con.execute(
                 "INSERT INTO tickets (titulo, descripcion, usuario, categoria, prioridad, creado) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (
@@ -72,11 +128,16 @@ def nuevo():
                     ahora(),
                 ),
             )
-        return redirect(url_for("inicio"))
+            nuevo_id = cur.lastrowid
+        if "usuario_id" in session:
+            return redirect(url_for("inicio"))
+        flash(f"Tu ticket MAT-{nuevo_id:03d} fue registrado. Un técnico lo revisará pronto.")
+        return redirect(url_for("nuevo"))
     return render_template("nuevo.html")
 
 
 @app.route("/ticket/<int:ticket_id>")
+@login_requerido
 def detalle(ticket_id):
     with conectar() as con:
         ticket = con.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
@@ -90,11 +151,12 @@ def detalle(ticket_id):
         ticket=ticket,
         comentarios=comentarios,
         estados=ESTADOS,
-        tecnicos=TECNICOS,
+        tecnicos=lista_tecnicos(),
     )
 
 
 @app.route("/ticket/<int:ticket_id>/actualizar", methods=["POST"])
+@login_requerido
 def actualizar(ticket_id):
     estado = request.form["estado"]
     asignado = request.form["asignado"]
@@ -108,7 +170,6 @@ def actualizar(ticket_id):
             "UPDATE tickets SET estado = ?, asignado = ? WHERE id = ?",
             (estado, asignado, ticket_id),
         )
-        # Bitácora automática de cambios
         cambios = []
         if anterior["estado"] != estado:
             cambios.append(f"Estado: {anterior['estado']} → {estado}")
@@ -117,17 +178,18 @@ def actualizar(ticket_id):
         if cambios:
             con.execute(
                 "INSERT INTO comentarios (ticket_id, autor, texto, creado) VALUES (?, ?, ?, ?)",
-                (ticket_id, "Sistema", " | ".join(cambios), ahora()),
+                (ticket_id, f"Sistema ({session['nombre']})", " | ".join(cambios), ahora()),
             )
     return redirect(url_for("detalle", ticket_id=ticket_id))
 
 
 @app.route("/ticket/<int:ticket_id>/comentar", methods=["POST"])
+@login_requerido
 def comentar(ticket_id):
     with conectar() as con:
         con.execute(
             "INSERT INTO comentarios (ticket_id, autor, texto, creado) VALUES (?, ?, ?, ?)",
-            (ticket_id, request.form["autor"], request.form["texto"], ahora()),
+            (ticket_id, session["nombre"], request.form["texto"], ahora()),
         )
     return redirect(url_for("detalle", ticket_id=ticket_id))
 

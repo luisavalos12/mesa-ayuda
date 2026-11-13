@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Iniciar sesión</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.9/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <div class="container py-5" style="max-width: 400px;">
+    <h1 class="h4 mb-4 text-center">Mesa de Ayuda TI</h1>
+    {% with mensajes = get_flashed_messages() %}
+      {% for m in mensajes %}<div class="alert alert-danger">{{ m }}</div>{% endfor %}
+    {% endwith %}
+    <form method="post" class="bg-white p-4 shadow-sm rounded">
+      <div class="mb-3">
+        <label class="form-label">Usuario</label>
+        <input name="usuario" class="form-control" required autofocus>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input name="password" type="password" class="form-control" required>
+      </div>
+      <button class="btn btn-primary w-100">Entrar</button>
+    </form>
+    <p class="text-center mt-3">
+      ¿Eres usuario? <a href="{{ url_for('nuevo') }}">Reporta un problema aquí</a>
+    </p>
+  </div>
+</body>
+</html>
