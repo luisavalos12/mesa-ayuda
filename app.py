@@ -5,7 +5,8 @@ from functools import wraps
 
 from flask import (Flask, render_template, request, redirect, url_for,
                    abort, session, flash)
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "solo-para-desarrollo")
@@ -321,5 +322,27 @@ def eliminar(ticket_id):
         con.execute("DELETE FROM tickets WHERE id = ?", (ticket_id,))
     flash("Ticket eliminado.")
     return redirect(url_for("inicio"))
+@app.route("/registro", methods=["GET", "POST"])
+@login_requerido
+def registro():
+    if request.method == "POST":
+        nombre = request.form.get("nombre", "").strip()
+        usuario = request.form.get("usuario", "").strip()
+        password = request.form.get("password", "")
+        if not nombre or not usuario or not password:
+            flash("Faltan datos: nombre, usuario y contraseña son obligatorios.")
+            return redirect(url_for("registro"))
+        with conectar() as con:
+            existe = con.execute("SELECT id FROM usuarios WHERE usuario = ?", (usuario,)).fetchone()
+            if existe is not None:
+                flash("Ese usuario ya existe.")
+                return redirect(url_for("registro"))
+            con.execute(
+                "INSERT INTO usuarios (usuario, nombre, password_hash) VALUES (?, ?, ?)",
+                (usuario, nombre, generate_password_hash(password)),
+            )
+        flash("Técnico registrado.")
+        return redirect(url_for("inicio"))
+    return render_template("registro.html")
 if __name__ == "__main__":
     app.run(debug=True)
