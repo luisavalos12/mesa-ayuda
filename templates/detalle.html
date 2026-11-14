@@ -9,6 +9,9 @@
   <div class="container py-4" style="max-width: 800px;">
     <a href="{{ url_for('inicio') }}" class="btn btn-link px-0 mb-3">← Volver a la lista</a>
     <a href="{{ url_for('editar', ticket_id=ticket['id']) }}" class="btn btn-outline-primary mb-3 ms-2">Editar ticket</a>
+    <form method="post" action="{{ url_for('eliminar', ticket_id=ticket['id']) }}" class="d-inline" onsubmit="return confirm('¿Eliminar este ticket? Esta acción no se puede deshacer.');">
+  <button type="submit" class="btn btn-outline-danger mb-3 ms-2">Eliminar ticket</button>
+</form>
      {% with mensajes = get_flashed_messages() %}
       {% for m in mensajes %}<div class="alert alert-warning">{{ m }}</div>{% endfor %}
      {% endwith %}

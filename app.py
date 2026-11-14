@@ -310,5 +310,16 @@ def comentar(ticket_id):
 
 
 
+@app.route("/ticket/<int:ticket_id>/eliminar", methods=["POST"])
+@login_requerido
+def eliminar(ticket_id):
+    with conectar() as con:
+        ticket = con.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+        if ticket is None:
+            abort(404)
+        con.execute("DELETE FROM comentarios WHERE ticket_id = ?", (ticket_id,))
+        con.execute("DELETE FROM tickets WHERE id = ?", (ticket_id,))
+    flash("Ticket eliminado.")
+    return redirect(url_for("inicio"))
 if __name__ == "__main__":
     app.run(debug=True)
