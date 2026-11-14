@@ -47,9 +47,17 @@ Proyecto personal desarrollado durante el bootcamp de Helpdesk IT y Redes de Gen
 
 ## Capturas
 
-| Nuevo ticket | Detalle y bitácora |
+| Inicio de sesión | Nuevo ticket |
 |---|---|
-| ![Nuevo ticket](docs/nuevo.png) | ![Detalle](docs/detalle.png) |
+| ![Login](docs/login.png) | ![Nuevo ticket](docs/nuevo.png) |
+
+| Detalle con sugerencia IA | Mis tickets (usuario) |
+|---|---|
+| ![Detalle](docs/detalle.png) | ![Mis tickets](docs/mis_tickets.png) |
+
+| Gestión de usuarios (admin) |
+|---|
+| ![Usuarios](docs/usuarios.png) |
 
 ## Tecnologías
 
