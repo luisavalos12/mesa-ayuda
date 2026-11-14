@@ -20,10 +20,12 @@
         <label class="form-label">Descripción del problema</label>
         <textarea name="descripcion" class="form-control" rows="4" required></textarea>
       </div>
+      {% if session.get('rol') != 'usuario' %}
       <div class="mb-3">
         <label class="form-label">Usuario que reporta</label>
         <input name="usuario" class="form-control" required>
       </div>
+      {% endif %}
       <div class="row">
         <div class="col mb-3">
           <label class="form-label">Categoría</label>

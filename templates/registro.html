@@ -26,6 +26,21 @@
         <label class="form-label">Contraseña</label>
         <input type="password" name="password" class="form-control" required>
       </div>
+     <div class="mb-3">
+  <label class="form-label">Rol</label>
+  <select name="rol" class="form-select">
+    <option value="tecnico">Técnico</option>
+    <option value="usuario">Usuario de departamento</option>
+  </select>
+</div>
+<div class="mb-3">
+  <label class="form-label">Departamento</label>
+  <select name="departamento" class="form-select">
+    {% for d in departamentos %}
+    <option>{{ d }}</option>
+    {% endfor %}
+  </select>
+</div> 
       <button type="submit" class="btn btn-primary">Registrar técnico</button>
       <a href="{{ url_for('inicio') }}" class="btn btn-link">Cancelar</a>
     </form>

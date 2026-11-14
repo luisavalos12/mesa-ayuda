@@ -14,6 +14,7 @@ DB = "tickets.db"
 ESTADOS = ["Abierto", "En proceso", "Resuelto", "Cerrado"]
 CATEGORIAS = ["Hardware", "Software", "Red", "Cuentas y accesos", "Otro"]
 PRIORIDADES = ["Baja", "Media", "Alta"]
+DEPARTAMENTOS = ["Ventas", "Contabilidad", "Recursos Humanos", "Operaciones", "TI", "Otro"]
 
 
 def conectar():
@@ -73,6 +74,11 @@ def crear_tabla():
         columnas = [c["name"] for c in con.execute("PRAGMA table_info(tickets)")]
         if "asignado" not in columnas:
             con.execute("ALTER TABLE tickets ADD COLUMN asignado TEXT NOT NULL DEFAULT 'Sin asignar'")
+    columnas_usuarios = [c["name"] for c in con.execute("PRAGMA table_info(usuarios)")]
+    if "rol" not in columnas_usuarios:
+        con.execute("ALTER TABLE usuarios ADD COLUMN rol TEXT NOT NULL DEFAULT 'tecnico'")
+    if "departamento" not in columnas_usuarios:
+        con.execute("ALTER TABLE usuarios ADD COLUMN departamento TEXT NOT NULL DEFAULT 'TI'")
 
 
 def login_requerido(vista):
@@ -105,6 +111,9 @@ def login():
             session.clear()
             session["usuario_id"] = u["id"]
             session["nombre"] = u["nombre"]
+            session["rol"] = u["rol"]
+            session["departamento"] = u["departamento"]
+
             siguiente = request.args.get("siguiente", "")
             # Solo redirige a rutas internas de la app
             if not siguiente.startswith("/") or siguiente.startswith("//"):
@@ -123,6 +132,8 @@ def logout():
 @app.route("/")
 @login_requerido
 def inicio():
+    if session.get("rol") == "usuario":
+     return redirect(url_for("mis_tickets"))
     estado = request.args.get("estado", "")
     prioridad = request.args.get("prioridad", "")
     categoria = request.args.get("categoria", "")
@@ -188,6 +199,8 @@ def nuevo():
      titulo = request.form.get("titulo", "").strip()
      descripcion = request.form.get("descripcion", "").strip()
      usuario = request.form.get("usuario", "").strip()
+     if session.get("rol") == "usuario":
+        usuario = session["nombre"]
      categoria = request.form.get("categoria", "")
      prioridad = request.form.get("prioridad", "")
      if not titulo or not descripcion or not usuario:
@@ -219,6 +232,8 @@ def detalle(ticket_id):
         ticket = con.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
         if ticket is None:
             abort(404)
+        if session.get("rol") == "usuario" and ticket["usuario"] != session["nombre"]:
+            abort(403)
         comentarios = con.execute(
             "SELECT * FROM comentarios WHERE ticket_id = ? ORDER BY id", (ticket_id,)
         ).fetchall()
@@ -234,6 +249,8 @@ def detalle(ticket_id):
 @app.route("/ticket/<int:ticket_id>/actualizar", methods=["POST"])
 @login_requerido
 def actualizar(ticket_id):
+    if session.get("rol") != "tecnico":
+        abort(403)
     estado = request.form.get("estado", "")
     asignado = request.form.get("asignado", "")
     with conectar() as con:
@@ -263,6 +280,8 @@ def actualizar(ticket_id):
 @app.route("/ticket/<int:ticket_id>/editar", methods=["GET", "POST"])
 @login_requerido
 def editar(ticket_id):
+    if session.get("rol") != "tecnico":
+        abort(403)
     with conectar() as con:
         ticket = con.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
         if ticket is None:
@@ -314,6 +333,8 @@ def comentar(ticket_id):
 @app.route("/ticket/<int:ticket_id>/eliminar", methods=["POST"])
 @login_requerido
 def eliminar(ticket_id):
+    if session.get("rol") != "tecnico":
+        abort(403)
     with conectar() as con:
         ticket = con.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
         if ticket is None:
@@ -325,24 +346,43 @@ def eliminar(ticket_id):
 @app.route("/registro", methods=["GET", "POST"])
 @login_requerido
 def registro():
+    if session.get("rol") != "tecnico":
+        abort(403)
     if request.method == "POST":
         nombre = request.form.get("nombre", "").strip()
         usuario = request.form.get("usuario", "").strip()
         password = request.form.get("password", "")
+        rol = request.form.get("rol", "tecnico")
+        departamento = request.form.get("departamento", "TI")
+
         if not nombre or not usuario or not password:
             flash("Faltan datos: nombre, usuario y contraseña son obligatorios.")
             return redirect(url_for("registro"))
+        if rol not in ("tecnico", "usuario") or departamento not in DEPARTAMENTOS:
+           flash("Rol o departamento no válido.")
+           return redirect(url_for("registro"))
+
         with conectar() as con:
             existe = con.execute("SELECT id FROM usuarios WHERE usuario = ?", (usuario,)).fetchone()
             if existe is not None:
                 flash("Ese usuario ya existe.")
                 return redirect(url_for("registro"))
             con.execute(
-                "INSERT INTO usuarios (usuario, nombre, password_hash) VALUES (?, ?, ?)",
-                (usuario, nombre, generate_password_hash(password)),
+                "INSERT INTO usuarios (usuario, nombre, password_hash, rol, departamento) VALUES (?, ?, ?, ?, ?)",
+                (usuario, nombre, generate_password_hash(password), rol, departamento),
             )
         flash("Técnico registrado.")
         return redirect(url_for("inicio"))
-    return render_template("registro.html")
+    return render_template("registro.html", departamentos=DEPARTAMENTOS)
+@app.route("/mis_tickets")
+@login_requerido
+def mis_tickets():
+    with conectar() as con:
+        filas = con.execute("SELECT * FROM tickets WHERE usuario = ? ORDER BY id DESC", (session["nombre"],)).fetchall()
+    tickets = [dict(f) for f in filas]
+    for t in tickets:
+        t["limite"] = limite_sla(t)
+        t["vencido"] = esta_vencido(t)
+    return render_template("mis_tickets.html", tickets=tickets)
 if __name__ == "__main__":
     app.run(debug=True)
