@@ -59,6 +59,7 @@ Proyecto personal desarrollado durante el bootcamp de Helpdesk IT y Redes de Gen
 |---|
 | ![Usuarios](docs/usuarios.png) |
 
+
 ## Tecnologías
 
 - Python 3
@@ -91,10 +92,10 @@ Crea la primera cuenta (la contraseña no se ve al escribir):
 python crear_usuario.py
 ```
 
-Conviértela en admin (cambia `luis` por el usuario que elegiste):
+Conviértela en admin (maestro):
 
 ```bash
-python -c "import sqlite3; c=sqlite3.connect('tickets.db'); c.execute(\"UPDATE usuarios SET rol='admin' WHERE usuario='luis'\"); c.commit()"
+python hacer_maestro.py
 ```
 
 Inicia la aplicación:
