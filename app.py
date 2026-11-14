@@ -262,12 +262,14 @@ def detalle(ticket_id):
         comentarios = con.execute(
             "SELECT * FROM comentarios WHERE ticket_id = ? ORDER BY id", (ticket_id,)
         ).fetchall()
+    sugerencia, motivo = sugerir_prioridad(ticket["titulo"], ticket["descripcion"])
     return render_template(
         "detalle.html",
         ticket=ticket,
         comentarios=comentarios,
         estados=ESTADOS,
         tecnicos=lista_tecnicos(),
+        sugerencia=sugerencia, motivo=motivo,  
     )
 
 
@@ -409,5 +411,18 @@ def mis_tickets():
         t["limite"] = limite_sla(t)
         t["vencido"] = esta_vencido(t)
     return render_template("mis_tickets.html", tickets=tickets)
+@app.route("/ticket/<int:ticket_id>/aplicar_sugerencia", methods=["POST"])
+@login_requerido
+def aplicar_sugerencia(ticket_id):
+    if session.get("rol") != "tecnico":
+        abort(403)
+    with conectar() as con:
+        ticket = con.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+        if ticket is None:
+            abort(404)
+        sugerencia, motivo = sugerir_prioridad(ticket["titulo"], ticket["descripcion"])
+        con.execute("UPDATE tickets SET prioridad = ? WHERE id = ?", (sugerencia, ticket_id))
+    flash("Prioridad actualizada a " + sugerencia + " según la IA.")
+    return redirect(url_for("detalle", ticket_id=ticket_id))
 if __name__ == "__main__":
     app.run(debug=True)

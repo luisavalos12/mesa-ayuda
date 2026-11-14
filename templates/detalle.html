@@ -12,6 +12,16 @@
     <form method="post" action="{{ url_for('eliminar', ticket_id=ticket['id']) }}" class="d-inline" onsubmit="return confirm('¿Eliminar este ticket? Esta acción no se puede deshacer.');">
   <button type="submit" class="btn btn-outline-danger mb-3 ms-2">Eliminar ticket</button>
 </form>
+{% if session.get('rol') == 'tecnico' %}
+<div class="alert alert-info">
+  🤖 Sugerencia IA: <strong>{{ sugerencia }}</strong><br>
+  <small>{{ motivo }}</small><br>
+  <form method="post" action="{{ url_for('aplicar_sugerencia', ticket_id=ticket['id']) }}" class="d-inline">
+    <button type="submit" class="btn btn-sm btn-primary mt-2">Usar esta prioridad</button>
+  </form>
+  <a href="{{ url_for('editar', ticket_id=ticket['id']) }}" class="btn btn-sm btn-outline-secondary mt-2">Cambiarla a mano</a>
+</div>
+{% endif %}
      {% with mensajes = get_flashed_messages() %}
       {% for m in mensajes %}<div class="alert alert-warning">{{ m }}</div>{% endfor %}
      {% endwith %}
