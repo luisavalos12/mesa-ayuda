@@ -91,6 +91,11 @@
     <a href="{{ url_for('inicio') }}" class="btn btn-link btn-sm p-0">Limpiar filtros</a>
   </div>
 </form>
+<div class="mb-3">
+  Ordenar por:
+  <a href="{{ url_for('inicio', orden='fecha', estado=estado, prioridad=prioridad, categoria=categoria, q=q) }}" class="btn btn-sm btn-outline-primary">Fecha</a>
+  <a href="{{ url_for('inicio', orden='prioridad', estado=estado, prioridad=prioridad, categoria=categoria, q=q) }}" class="btn btn-sm btn-outline-primary">Prioridad</a>
+</div>
 
     {% if tickets %}
     <table class="table table-hover bg-white shadow-sm">

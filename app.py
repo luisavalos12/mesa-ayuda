@@ -138,6 +138,10 @@ def inicio():
     prioridad = request.args.get("prioridad", "")
     categoria = request.args.get("categoria", "")
     q = request.args.get("q", "").strip()
+    orden = request.args.get("orden", "fecha")
+    if orden not in ("fecha", "prioridad"):
+        orden = "fecha"
+
     condiciones = []
     parametros = []
     if estado in ESTADOS:
@@ -155,7 +159,11 @@ def inicio():
     sql = "SELECT * FROM tickets"
     if condiciones:
         sql += " WHERE " + " AND ".join(condiciones)
-    sql += " ORDER BY id DESC"
+    if orden == "prioridad":
+        sql += " ORDER BY CASE prioridad WHEN 'Alta' THEN 1 WHEN 'Media' THEN 2 ELSE 3 END, id DESC"
+    else:
+        sql += " ORDER BY id DESC"
+
     with conectar() as con:
      tickets = con.execute(sql, parametros).fetchall()
      tickets = [dict(fila) for fila in tickets]
@@ -183,6 +191,7 @@ def inicio():
         prioridad=prioridad,
         categoria=categoria,
         q=q,
+        orden=orden,
         totales_estado=totales_estado,
         totales_prioridad=totales_prioridad,
         total=sum(totales_estado.values()),
