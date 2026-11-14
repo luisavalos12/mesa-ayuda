@@ -259,7 +259,35 @@ def actualizar(ticket_id):
                 (ticket_id, f"Sistema ({session['nombre']})", " | ".join(cambios), ahora()),
             )
     return redirect(url_for("detalle", ticket_id=ticket_id))
-
+@app.route("/ticket/<int:ticket_id>/editar", methods=["GET", "POST"])
+@login_requerido
+def editar(ticket_id):
+    with conectar() as con:
+        ticket = con.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+        if ticket is None:
+            abort(404)
+        if request.method == "POST":
+            titulo = request.form.get("titulo", "").strip()
+            descripcion = request.form.get("descripcion", "").strip()
+            categoria = request.form.get("categoria", "")
+            prioridad = request.form.get("prioridad", "")
+            if not titulo or not descripcion:
+                flash("Faltan datos: título y descripción son obligatorios.")
+                return redirect(url_for("editar", ticket_id=ticket_id))
+            if categoria not in CATEGORIAS or prioridad not in PRIORIDADES:
+                flash("Categoría o prioridad no válida.")
+                return redirect(url_for("editar", ticket_id=ticket_id))
+            con.execute(
+                "UPDATE tickets SET titulo = ?, descripcion = ?, categoria = ?, prioridad = ? WHERE id = ?",
+                (titulo, descripcion, categoria, prioridad, ticket_id),
+            )
+            return redirect(url_for("detalle", ticket_id=ticket_id))
+        return render_template(
+            "editar.html",
+            ticket=ticket,
+            categorias=CATEGORIAS,
+            prioridades=PRIORIDADES,
+        )
 
 @app.route("/ticket/<int:ticket_id>/comentar", methods=["POST"])
 @login_requerido

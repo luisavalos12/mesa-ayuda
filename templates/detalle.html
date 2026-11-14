@@ -8,6 +8,7 @@
 <body class="bg-light">
   <div class="container py-4" style="max-width: 800px;">
     <a href="{{ url_for('inicio') }}" class="btn btn-link px-0 mb-3">← Volver a la lista</a>
+    <a href="{{ url_for('editar', ticket_id=ticket['id']) }}" class="btn btn-outline-primary mb-3 ms-2">Editar ticket</a>
      {% with mensajes = get_flashed_messages() %}
       {% for m in mensajes %}<div class="alert alert-warning">{{ m }}</div>{% endfor %}
      {% endwith %}
