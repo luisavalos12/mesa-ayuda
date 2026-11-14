@@ -194,7 +194,7 @@ def inicio():
      totales_estado = {e: 0 for e in ESTADOS}
     for f in filas_estado:
      totales_estado[f["estado"]] = f["n"]
-     totales_prioridad = {p: 0 for p in PRIORIDADES}
+    totales_prioridad = {p: 0 for p in PRIORIDADES}
     for f in filas_prioridad:
         totales_prioridad[f["prioridad"]] = f["n"]
     return render_template(
