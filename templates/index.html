@@ -12,7 +12,10 @@
       <div>
   <span class="me-3 text-muted">Hola, {{ session['nombre'] }}</span>
   <a href="{{ url_for('nuevo') }}" class="btn btn-primary">+ Nuevo ticket</a>
-  <a href="{{ url_for('registro') }}" class="btn btn-outline-primary">+ Nuevo técnico</a>
+  {% if session.get('rol') == 'admin' %}
+  <a href="{{ url_for('usuarios') }}" class="btn btn-outline-dark">Usuarios</a>
+    <a href="{{ url_for('registro') }}" class="btn btn-outline-primary">+ Nuevo técnico</a>
+{% endif %}
   <a href="{{ url_for('exportar') }}" class="btn btn-outline-success">⬇ Exportar CSV</a>
   <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">Salir</a>
 </div>

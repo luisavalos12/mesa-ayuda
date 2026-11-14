@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editar usuario - Mesa de Ayuda TI</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.9/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-4" style="max-width: 700px;">
+<h1>Editar usuario</h1>
+<p>Usuario: <strong>{{ u['usuario'] }}</strong></p>
+<form method="post" class="bg-white p-4 shadow-sm rounded">
+<div class="mb-3">
+<label class="form-label">Nombre</label>
+<input type="text" name="nombre" class="form-control" value="{{ u['nombre'] }}" required>
+</div>
+<div class="mb-3">
+<label class="form-label">Rol</label>
+<select name="rol" class="form-select">
+<option value="admin" {% if u['rol'] == 'admin' %}selected{% endif %}>Maestro</option>
+<option value="tecnico" {% if u['rol'] == 'tecnico' %}selected{% endif %}>Técnico</option>
+<option value="usuario" {% if u['rol'] == 'usuario' %}selected{% endif %}>Usuario de departamento</option>
+</select>
+</div>
+<div class="mb-3">
+<label class="form-label">Departamento</label>
+<select name="departamento" class="form-select">
+{% for d in departamentos %}
+<option value="{{ d }}" {% if u['departamento'] == d %}selected{% endif %}>{{ d }}</option>
+{% endfor %}
+</select>
+</div>
+<div class="mb-3">
+<label class="form-label">Nueva contraseña (déjala vacía si no la cambias)</label>
+<input type="password" name="password" class="form-control">
+</div>
+<button type="submit" class="btn btn-primary">Guardar cambios</button>
+<a href="{{ url_for('usuarios') }}" class="btn btn-outline-secondary">Volver</a>
+</form>
+</div>
+</body>
+</html>

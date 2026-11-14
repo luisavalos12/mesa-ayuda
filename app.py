@@ -277,7 +277,7 @@ def detalle(ticket_id):
 @app.route("/ticket/<int:ticket_id>/actualizar", methods=["POST"])
 @login_requerido
 def actualizar(ticket_id):
-    if session.get("rol") != "tecnico":
+    if session.get("rol") not in ("tecnico", "admin"):
         abort(403)
     estado = request.form.get("estado", "")
     asignado = request.form.get("asignado", "")
@@ -308,7 +308,7 @@ def actualizar(ticket_id):
 @app.route("/ticket/<int:ticket_id>/editar", methods=["GET", "POST"])
 @login_requerido
 def editar(ticket_id):
-    if session.get("rol") != "tecnico":
+    if session.get("rol") not in ("tecnico", "admin"):
         abort(403)
     with conectar() as con:
         ticket = con.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
@@ -361,7 +361,7 @@ def comentar(ticket_id):
 @app.route("/ticket/<int:ticket_id>/eliminar", methods=["POST"])
 @login_requerido
 def eliminar(ticket_id):
-    if session.get("rol") != "tecnico":
+    if session.get("rol") not in ("tecnico", "admin"):
         abort(403)
     with conectar() as con:
         ticket = con.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
@@ -374,7 +374,7 @@ def eliminar(ticket_id):
 @app.route("/registro", methods=["GET", "POST"])
 @login_requerido
 def registro():
-    if session.get("rol") != "tecnico":
+    if session.get("rol") != "admin":
         abort(403)
     if request.method == "POST":
         nombre = request.form.get("nombre", "").strip()
@@ -386,7 +386,7 @@ def registro():
         if not nombre or not usuario or not password:
             flash("Faltan datos: nombre, usuario y contraseña son obligatorios.")
             return redirect(url_for("registro"))
-        if rol not in ("tecnico", "usuario") or departamento not in DEPARTAMENTOS:
+        if rol not in ("admin", "tecnico", "usuario") or departamento not in DEPARTAMENTOS:
            flash("Rol o departamento no válido.")
            return redirect(url_for("registro"))
 
@@ -415,7 +415,7 @@ def mis_tickets():
 @app.route("/ticket/<int:ticket_id>/aplicar_sugerencia", methods=["POST"])
 @login_requerido
 def aplicar_sugerencia(ticket_id):
-    if session.get("rol") != "tecnico":
+    if session.get("rol") not in ("tecnico", "admin"):
         abort(403)
     with conectar() as con:
         ticket = con.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
@@ -428,7 +428,7 @@ def aplicar_sugerencia(ticket_id):
 @app.route("/exportar")
 @login_requerido
 def exportar():
-    if session.get("rol") != "tecnico":
+    if session.get("rol") not in ("tecnico", "admin"):
         abort(403)
     with conectar() as con:
         filas = con.execute("SELECT * FROM tickets ORDER BY id DESC").fetchall()
@@ -438,5 +438,57 @@ def exportar():
     for f in filas:
         escritor.writerow(["MAT-" + str(f["id"]).zfill(3), f["titulo"], f["usuario"], f["categoria"], f["prioridad"], f["estado"], f["asignado"], f["creado"]])
     return Response(salida.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=tickets.csv"})
+@app.route("/usuarios")
+@login_requerido
+def usuarios():
+    if session.get("rol") != "admin":
+        abort(403)
+    with conectar() as con:
+        lista = con.execute("SELECT id, usuario, nombre, rol, departamento FROM usuarios ORDER BY nombre").fetchall()
+    return render_template("usuarios.html", usuarios=lista)
+
+@app.route("/usuario/<int:user_id>/editar", methods=["GET", "POST"])
+@login_requerido
+def editar_usuario(user_id):
+    if session.get("rol") != "admin":
+        abort(403)
+    with conectar() as con:
+        u = con.execute("SELECT * FROM usuarios WHERE id = ?", (user_id,)).fetchone()
+        if u is None:
+            abort(404)
+        if request.method == "POST":
+            nombre = request.form.get("nombre", "").strip()
+            rol = request.form.get("rol", "tecnico")
+            departamento = request.form.get("departamento", "TI")
+            password = request.form.get("password", "")
+            if not nombre:
+                flash("Faltan datos: el nombre es obligatorio.")
+                return redirect(url_for("editar_usuario", user_id=user_id))
+            if rol not in ("admin", "tecnico", "usuario") or departamento not in DEPARTAMENTOS:
+                flash("Rol o departamento no válido.")
+                return redirect(url_for("editar_usuario", user_id=user_id))
+            if password:
+                con.execute("UPDATE usuarios SET nombre = ?, rol = ?, departamento = ?, password_hash = ? WHERE id = ?", (nombre, rol, departamento, generate_password_hash(password), user_id))
+            else:
+                con.execute("UPDATE usuarios SET nombre = ?, rol = ?, departamento = ? WHERE id = ?", (nombre, rol, departamento, user_id))
+            flash("Usuario actualizado.")
+            return redirect(url_for("usuarios"))
+    return render_template("editar_usuario.html", u=u, departamentos=DEPARTAMENTOS)
+
+@app.route("/usuario/<int:user_id>/eliminar", methods=["POST"])
+@login_requerido
+def eliminar_usuario(user_id):
+    if session.get("rol") != "admin":
+        abort(403)
+    with conectar() as con:
+        u = con.execute("SELECT * FROM usuarios WHERE id = ?", (user_id,)).fetchone()
+        if u is None:
+            abort(404)
+        if u["nombre"] == session.get("nombre"):
+            flash("No puedes eliminarte a ti mismo.")
+            return redirect(url_for("usuarios"))
+        con.execute("DELETE FROM usuarios WHERE id = ?", (user_id,))
+    flash("Usuario eliminado.")
+    return redirect(url_for("usuarios"))
 if __name__ == "__main__":
     app.run(debug=True)
