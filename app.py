@@ -3,8 +3,9 @@ import sqlite3
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import (Flask, render_template, request, redirect, url_for,
-                   abort, session, flash)
+import csv
+import io
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, Response
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -424,5 +425,18 @@ def aplicar_sugerencia(ticket_id):
         con.execute("UPDATE tickets SET prioridad = ? WHERE id = ?", (sugerencia, ticket_id))
     flash("Prioridad actualizada a " + sugerencia + " según la IA.")
     return redirect(url_for("detalle", ticket_id=ticket_id))
+@app.route("/exportar")
+@login_requerido
+def exportar():
+    if session.get("rol") != "tecnico":
+        abort(403)
+    with conectar() as con:
+        filas = con.execute("SELECT * FROM tickets ORDER BY id DESC").fetchall()
+    salida = io.StringIO()
+    escritor = csv.writer(salida)
+    escritor.writerow(["Folio", "Titulo", "Usuario", "Categoria", "Prioridad", "Estado", "Asignado", "Creado"])
+    for f in filas:
+        escritor.writerow(["MAT-" + str(f["id"]).zfill(3), f["titulo"], f["usuario"], f["categoria"], f["prioridad"], f["estado"], f["asignado"], f["creado"]])
+    return Response(salida.getvalue(), mimetype="text/csv", headers={"Content-Disposition": "attachment; filename=tickets.csv"})
 if __name__ == "__main__":
     app.run(debug=True)
