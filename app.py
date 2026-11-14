@@ -82,6 +82,8 @@ def crear_tabla():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 usuario TEXT NOT NULL UNIQUE,
                 nombre TEXT NOT NULL,
+                apellidos TEXT NOT NULL DEFAULT '',
+                correo TEXT NOT NULL DEFAULT '',
                 password_hash TEXT NOT NULL
             )
         """)
@@ -93,6 +95,10 @@ def crear_tabla():
         con.execute("ALTER TABLE usuarios ADD COLUMN rol TEXT NOT NULL DEFAULT 'tecnico'")
     if "departamento" not in columnas_usuarios:
         con.execute("ALTER TABLE usuarios ADD COLUMN departamento TEXT NOT NULL DEFAULT 'TI'")
+    if "apellidos" not in columnas_usuarios:
+        con.execute("ALTER TABLE usuarios ADD COLUMN apellidos TEXT NOT NULL DEFAULT ''")
+    if "correo" not in columnas_usuarios:
+        con.execute("ALTER TABLE usuarios ADD COLUMN correo TEXT NOT NULL DEFAULT ''")   
 
 
 def login_requerido(vista):
@@ -371,35 +377,66 @@ def eliminar(ticket_id):
         con.execute("DELETE FROM tickets WHERE id = ?", (ticket_id,))
     flash("Ticket eliminado.")
     return redirect(url_for("inicio"))
+def limpiar(texto):
+    texto = texto.lower().strip()
+    for a, b in [("á", "a"), ("é", "e"), ("í", "i"), ("ó", "o"), ("ú", "u"), ("ñ", "n")]:
+        texto = texto.replace(a, b)
+    return texto
+
+
+def generar_usuario(nombre, apellidos, departamento, con):
+    partes = apellidos.split()
+    primer = limpiar(partes[0]) if partes else ""
+    segundo = limpiar(partes[1]) if len(partes) > 1 else ""
+    n = limpiar(nombre.split()[0]) if nombre.split() else ""
+    depto = limpiar(departamento)
+    variantes = []
+    if primer:
+        variantes.append(n + "." + primer[:2])
+    if primer:
+        variantes.append(n[:1] + "." + primer + segundo[:1])
+    variantes.append(n + "." + depto)
+    for v in variantes:
+        fila = con.execute("SELECT id FROM usuarios WHERE usuario = ?", (v,)).fetchone()
+        if not fila:
+            return v
+    base = variantes[-1]
+    i = 1
+    while True:
+        cand = base + str(i)
+        fila = con.execute("SELECT id FROM usuarios WHERE usuario = ?", (cand,)).fetchone()
+        if not fila:
+            return cand
+        i = i + 1
 @app.route("/registro", methods=["GET", "POST"])
 @login_requerido
-def registro():
+def registro(): 
     if session.get("rol") != "admin":
         abort(403)
     if request.method == "POST":
         nombre = request.form.get("nombre", "").strip()
-        usuario = request.form.get("usuario", "").strip()
+        apellidos = request.form.get("apellidos", "").strip()
+        correo = request.form.get("correo", "").strip()
         password = request.form.get("password", "")
         rol = request.form.get("rol", "tecnico")
         departamento = request.form.get("departamento", "TI")
 
-        if not nombre or not usuario or not password:
-            flash("Faltan datos: nombre, usuario y contraseña son obligatorios.")
-            return redirect(url_for("registro"))
+        if not nombre or not apellidos or not correo or not password:
+            flash("Faltan datos: nombre, apellidos, correo y contraseña son obligatorios.")
+        if "@" not in correo:
+            flash("Escribe un correo válido.")
+            return redirect(url_for("registro"))   
         if rol not in ("admin", "tecnico", "usuario") or departamento not in DEPARTAMENTOS:
            flash("Rol o departamento no válido.")
            return redirect(url_for("registro"))
 
         with conectar() as con:
-            existe = con.execute("SELECT id FROM usuarios WHERE usuario = ?", (usuario,)).fetchone()
-            if existe is not None:
-                flash("Ese usuario ya existe.")
-                return redirect(url_for("registro"))
+            usuario = generar_usuario(nombre, apellidos, departamento, con)
             con.execute(
-                "INSERT INTO usuarios (usuario, nombre, password_hash, rol, departamento) VALUES (?, ?, ?, ?, ?)",
-                (usuario, nombre, generate_password_hash(password), rol, departamento),
+                "INSERT INTO usuarios (usuario, nombre, apellidos, correo, password_hash, rol, departamento) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (usuario, nombre, apellidos, correo, generate_password_hash(password), rol, departamento)
             )
-        flash("Técnico registrado.")
+        flash("Usuario registrado. Su usuario es " + usuario + ".")
         return redirect(url_for("inicio"))
     return render_template("registro.html", departamentos=DEPARTAMENTOS)
 @app.route("/mis_tickets")
@@ -444,7 +481,7 @@ def usuarios():
     if session.get("rol") != "admin":
         abort(403)
     with conectar() as con:
-        lista = con.execute("SELECT id, usuario, nombre, rol, departamento FROM usuarios ORDER BY nombre").fetchall()
+        lista = con.execute("SELECT id, usuario, nombre, apellidos, correo, rol, departamento FROM usuarios ORDER BY nombre")
     return render_template("usuarios.html", usuarios=lista)
 
 @app.route("/usuario/<int:user_id>/editar", methods=["GET", "POST"])
@@ -458,19 +495,24 @@ def editar_usuario(user_id):
             abort(404)
         if request.method == "POST":
             nombre = request.form.get("nombre", "").strip()
+            apellidos = request.form.get("apellidos", "").strip()
+            correo = request.form.get("correo", "").strip()
             rol = request.form.get("rol", "tecnico")
             departamento = request.form.get("departamento", "TI")
             password = request.form.get("password", "")
-            if not nombre:
-                flash("Faltan datos: el nombre es obligatorio.")
+            if not nombre or not apellidos or not correo:
+               flash("Faltan datos: nombre, apellidos y correo son obligatorios.")
+               return redirect(url_for("editar_usuario", user_id=user_id))
+            if "@" not in correo:
+                flash("Escribe un correo válido.")
                 return redirect(url_for("editar_usuario", user_id=user_id))
             if rol not in ("admin", "tecnico", "usuario") or departamento not in DEPARTAMENTOS:
                 flash("Rol o departamento no válido.")
                 return redirect(url_for("editar_usuario", user_id=user_id))
             if password:
-                con.execute("UPDATE usuarios SET nombre = ?, rol = ?, departamento = ?, password_hash = ? WHERE id = ?", (nombre, rol, departamento, generate_password_hash(password), user_id))
+               con.execute("UPDATE usuarios SET nombre = ?, apellidos = ?, correo = ?, rol = ?, departamento = ?, password_hash = ? WHERE id = ?", (nombre, apellidos, correo, rol, departamento, generate_password_hash(password), user_id))
             else:
-                con.execute("UPDATE usuarios SET nombre = ?, rol = ?, departamento = ? WHERE id = ?", (nombre, rol, departamento, user_id))
+                con.execute("UPDATE usuarios SET nombre = ?, apellidos = ?, correo = ?, rol = ?, departamento = ? WHERE id = ?", (nombre, apellidos, correo, rol, departamento, user_id))
             flash("Usuario actualizado.")
             return redirect(url_for("usuarios"))
     return render_template("editar_usuario.html", u=u, departamentos=DEPARTAMENTOS)

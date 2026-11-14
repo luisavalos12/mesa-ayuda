@@ -16,6 +16,14 @@
 <input type="text" name="nombre" class="form-control" value="{{ u['nombre'] }}" required>
 </div>
 <div class="mb-3">
+    <label class="form-label">Apellidos</label>
+    <input type="text" name="apellidos" class="form-control" value="{{ u['apellidos'] }}" required>
+</div>
+<div class="mb-3">
+    <label class="form-label">Correo</label>
+    <input type="email" name="correo" class="form-control" value="{{ u['correo'] }}" required>
+</div>
+<div class="mb-3">
 <label class="form-label">Rol</label>
 <select name="rol" class="form-select">
 <option value="admin" {% if u['rol'] == 'admin' %}selected{% endif %}>Maestro</option>

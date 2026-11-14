@@ -26,16 +26,18 @@
 <th>Usuario</th>
 <th>Rol</th>
 <th>Departamento</th>
+<th>Correo</th>
 <th>Acciones</th>
 </tr>
 </thead>
 <tbody>
 {% for u in usuarios %}
 <tr>
-<td>{{ u['nombre'] }}</td>
+<td>{{ u['nombre'] }} {{ u['apellidos'] }}</td>
 <td>{{ u['usuario'] }}</td>
 <td>{{ u['rol'] }}</td>
 <td>{{ u['departamento'] }}</td>
+<td>{{ u['correo'] }}</td>
 <td>
 <a href="{{ url_for('editar_usuario', user_id=u['id']) }}" class="btn btn-sm btn-outline-primary">Editar</a>
 <form method="post" action="{{ url_for('eliminar_usuario', user_id=u['id']) }}" class="d-inline" onsubmit="return confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.')">
