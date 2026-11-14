@@ -35,6 +35,19 @@ def esta_vencido(ticket):
     if ticket["estado"] in ("Resuelto", "Cerrado"):
         return False
     return datetime.now() > limite_sla(ticket)
+PALABRAS_ALTA = ["urgente", "todos", "nadie", "caido", "caído", "sin internet", "sin acceso", "bloqueado", "no puedo trabajar", "sistema caido", "no funciona"]
+PALABRAS_MEDIA = ["lento", "a veces", "error", "falla", "no abre", "se traba", "wifi", "contraseña"]
+
+
+def sugerir_prioridad(titulo, descripcion):
+    texto = (titulo + " " + descripcion).lower()
+    for palabra in PALABRAS_ALTA:
+        if palabra in texto:
+            return "Alta", "Detecté: " + palabra
+    for palabra in PALABRAS_MEDIA:
+        if palabra in texto:
+            return "Media", "Detecté: " + palabra
+    return "Baja", "No detecté urgencia"
 
 
 
@@ -170,6 +183,9 @@ def inicio():
      for t in tickets:
          t["limite"] = limite_sla(t).strftime("%Y-%m-%d %H:%M")
          t["vencido"] = esta_vencido(t)
+         sugerencia, motivo = sugerir_prioridad(t["titulo"], t["descripcion"])
+         t["sugerencia"] = sugerencia
+         t["motivo"] = motivo
      total_vencidos = sum(1 for t in tickets if t["vencido"])
 
      filas_estado = con.execute("SELECT estado, COUNT(*) AS n FROM tickets GROUP BY estado").fetchall()
